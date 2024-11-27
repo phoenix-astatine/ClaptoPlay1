@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clap to Play Music</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clap to Play Music</h1>
+    <p>Click the button below to start listening for claps.</p>
+    <button id="start">Start Listening</button>
+    <p id="status">Status: Not Listening</p>
+    <audio id="music" src="echoesofus.mp4"></audio>
+
+    <script>
+        // HTML elements
+const startButton = document.getElementById('start');
+const statusText = document.getElementById('status');
+const music = document.getElementById('music');
+
+// Audio detection variables
+const clapThreshold = 0.2; // Adjusted for sensitivity
+let audioContext, analyser, microphone, dataArray;
+
+// Function to start listening
+async function startListening() {
+    try {
+        // Initialize Web Audio API
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        microphone = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+
+        // Connect microphone to analyser
+        microphone.connect(analyser);
+
+        // Configure analyser
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        statusText.textContent = "Status: Listening...";
+        detectClap(); // Start detecting claps
+    } catch (error) {
+        console.error("Error accessing microphone:", error);
+        statusText.textContent = "Status: Error accessing microphone.";
+    }
+}
+
+// Function to detect claps
+function detectClap() {
+    analyser.getByteTimeDomainData(dataArray);
+
+    // Calculate average volume
+    const rms = Math.sqrt(
+        dataArray.reduce((sum, value) => sum + (value - 128) ** 2, 0) / dataArray.length
+    ) / 128;
+
+    console.log("RMS:", rms); // Debugging RMS values
+
+    if (rms > clapThreshold) {
+        console.log("Clap detected!");
+        playMusic();
+    }
+
+    // Continue listening
+    requestAnimationFrame(detectClap);
+}
+
+// Function to play music
+function playMusic() {
+    if (music.paused) {
+        music.play();
+        statusText.textContent = "Status: Music Playing...";
+        music.onended = () => {
+            statusText.textContent = "Status: Listening...";
+        };
+    }
+}
+
+// Attach event listener to button
+startButton.addEventListener('click', () => {
+    startListening();
+    startButton.disabled = true; // Disable the button after starting
+});
+
+  
+    </script>
+</body>
+</html>
